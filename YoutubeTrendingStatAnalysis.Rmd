@@ -1,0 +1,552 @@
+---
+title: "youtube_trending_stat_analysis"
+author: "Louis Weisz"
+date: "November 18, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r, import_packages, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(readr)
+library(ggthemes)
+library(caret)
+library(randomForest)
+library(reshape2)
+library(ggfortify)
+library(plotly)
+library(tictoc)
+library(rpart.plot)
+library(ROSE)
+library(DMwR)
+library(MASS)
+library(Metrics)
+
+library(FNN)
+
+library(qdap)
+library(tm)
+#library(plyr)
+#library(Rfast)
+```
+
+
+
+```{r}
+
+setwd("C:/Users/Louis Weisz/DA401 Trending Analysis")
+
+modernTrending = read.csv('full_standardized_modern_dataset.csv')
+
+std4data_b = read.csv('std4data_b.csv')
+
+viewsComparison = read.csv('modern_median_vs_trending_views_comparison.csv')
+
+```
+
+
+```{r}
+
+#df = modernTrending
+
+#add sub_count
+
+df <- subset(modernTrending, select = -c(1, description, statistics.subscriberCount))
+
+dfb <- subset(std4data_b, select = -c(1, description, statistics.subscriberCount))
+
+dfsum <- summary(df)
+dfbsum <- summary(dfb)
+```
+
+
+```{r}
+df$trending_status <- as.factor(df$trending_status)
+
+df$categoryId <- as.factor(df$categoryId)
+
+dfb$trending_status <- as.factor(dfb$trending_status)
+
+dfb$categoryId <- as.factor(dfb$categoryId)
+
+df$title <- as.character(df$title)
+
+df$title <- tolower(df$title) 
+#df$title <- replace_number(df$title)
+  
+df$view_velocity <- df$view_count / df$time_since_pub
+
+dfb$view_velocity <- dfb$view_count / dfb$time_since_pub
+
+cleaned_titles <- removeWords(df$title, stopwords("en"))
+frequent_terms <- freq_terms(cleaned_titles, 50)
+
+
+```
+
+
+
+
+```{r}
+
+levels(df$trending_status)[levels(df$trending_status)==0] <- "Charting"
+levels(df$trending_status)[levels(df$trending_status)==1] <- "Trending"
+
+summary(df$trending_status)
+
+
+set.seed(1)
+training_indices = createDataPartition(df$trending_status, p=0.7, list=FALSE)
+
+trendTrain = df[training_indices,]
+trendTest = df[-training_indices,]
+```
+
+
+```{r}
+#trendTrain <- na.omit(trendTrain)
+#trendTest <- na.omit(trendTest)
+
+trendTrain2 = subset(trendTrain, select = -c(categoryId, thumbnail_link, tags, initial_chart_date, initial_trend_date, final_chart_date, final_trend_date, publishing_time, publishedAt, channelId, title, current_view_velocity))
+trendTest2 = df = subset(trendTest, select = -c(categoryId, thumbnail_link, tags, initial_chart_date, initial_trend_date, final_chart_date, final_trend_date, publishing_time, publishedAt, channelId, title, current_view_velocity))
+
+trendTrain2mini <- sample_n(trendTrain2, 7000)
+trendTest2mini <- sample_n(trendTest2, 3000)
+
+#trendTrain2 <- na.omit(trendTrain2)
+#trendTest2 <- na.omit(trendTest2)
+
+
+```
+
+
+
+
+```{r}
+levels(dfb$trending_status)[levels(dfb$trending_status)==0] <- "Charting"
+levels(dfb$trending_status)[levels(dfb$trending_status)==1] <- "Trending"
+
+summary(dfb$trending_status)
+
+
+set.seed(1)
+training_indices = createDataPartition(dfb$trending_status, p=0.7, list=FALSE)
+
+trendTrainB = dfb[training_indices,]
+trendTestB = dfb[-training_indices,]
+
+
+```
+
+
+```{r}
+#trendTrain <- na.omit(trendTrain)
+#trendTest <- na.omit(trendTest)
+
+trendTrain2b = subset(trendTrainB, select = -c(thumbnail_link, tags, initial_chart_date, initial_trend_date, final_chart_date, final_trend_date, publishing_time, publishedAt, channelId, title, current_view_velocity))
+trendTest2b = df = subset(trendTestB, select = -c(thumbnail_link, tags, initial_chart_date, initial_trend_date, final_chart_date, final_trend_date, publishing_time, publishedAt, channelId, title, current_view_velocity))
+
+#trendTrain2 <- na.omit(trendTrain2)
+#trendTest2 <- na.omit(trendTest2)
+
+
+```
+
+
+
+```{r}
+
+
+
+
+```
+
+
+
+
+```{r}
+trctrl = trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+#trendTrain2mini <- sample_n(trendTrain2, 40000)
+
+regression_best_fit2 = train(full_rank ~ view_count + view_velocity + time_since_pub + sub_count, 
+                            data = trendTrain2, 
+                            method = "knn",
+                            trControl=trctrl,
+                            preProcess = c("center", "scale"),
+                            tuneLength = 7)
+
+plot(regression_best_fit2)
+
+regression_best_fit2
+
+```
+
+
+```{r}
+
+regressControl = trainControl(method="repeatedcv",number = 10, repeats = 5) 
+
+OriginalModel = train(full_rank ~ log(view_count) + time_since_pub + log(view_velocity) + sub_count,
+                        #.-full_rank - video_id - channelTitle - trending_date - total_trend_time - total_chart_time,
+                      trendTrain2, 
+                      method="glm", 
+                      trControl = regressControl)
+
+summary(OriginalModel)
+
+OriginalModel$results$RMSE
+```
+
+```{r}
+
+trctrl = trainControl(method = "repeatedcv", number = 15, repeats = 5)
+
+regression_best_fit = train(full_rank ~ view_count + view_velocity + time_since_pub + sub_count, 
+                            data = trendTrain2b, 
+                            method = "knn",
+                            trControl=trctrl,
+                            preProcess = c("center", "scale"),
+                            tuneLength = 15)
+
+plot(regression_best_fit)
+
+regression_best_fit
+
+```
+
+This model is a better choice since it doesn't duplicate videos. Instead it's built on predicting where each video will "land" relative to others in the list.
+```{r}
+
+regressControl = trainControl(method="repeatedcv",number = 20, repeats = 10) 
+
+
+OriginalModel2 = train(full_rank ~ log(view_count) + log(view_velocity) + time_since_pub + sub_count,
+                      trendTrain2b, 
+                      method="glm", 
+                      trControl = regressControl)
+
+summary(OriginalModel2)
+
+OriginalModel2$results$RMSE
+OriginalModel2$results$Rsquared
+
+```
+
+```{r}
+#view count and sub count
+
+#ggplot(radial,aes(y=NTAV,x=age))+geom_point()+geom_smooth(method="lm")
+
+trendTrain2b_filtered <- filter(trendTrain2b, view_count < 5000000)
+
+view_plot_linear_views <- ggplot(trendTrain2b_filtered, aes(y=full_rank,x=view_count))+geom_point()+ geom_smooth(method = 'lm')
+
+view_plot_linear_views
+
+view_plot_log_views <- ggplot(trendTrain2b_filtered, aes(y=full_rank,x=log(view_count)))+geom_point()+ geom_smooth(method = 'lm')
+
+view_plot_log_views
+
+ggplot(trendTrain2b_filtered, aes(y=full_rank,x=time_since_pub))+geom_point()+ geom_smooth(method = 'lm')
+
+
+#summary(lm(formula = full_rank ~ poly(view_count, 3), data = trendTrain2b_filtered))
+
+#plot(trendTrain2b_filtered$full_rank, trendTrain2b_filtered$view_count,type='l',col='navy',main='Nonlinear relationship',lwd=2)
+
+```
+
+
+This set is limited to only videos that hit trending, and it's limited to their first appearance on trending.
+```{r}
+newset <-filter(df, full_rank <51)
+
+newset <- newset[!duplicated(newset$video_id),]
+
+newset <- filter(newset,view_count<5000000)
+
+ggplot(newset, aes(y=full_rank,x=log(view_count)))+geom_point()+geom_jitter()+ geom_smooth(method = 'lm')
+
+ggplot(newset, aes(y=full_rank,x=log(time_since_pub)))+geom_point()+geom_jitter()+ geom_smooth(method = 'lm')
+  #stat_smooth(method="lm")
+
+```
+
+I took the liberty of running a model on this one as well, and found the following:
+
+lower timesincepub, lower sub count = lower rank <- indicates a "breakout success" (low rank is good)
+
+lower views, higher rank <- indicates lower popularity
+```{r}
+
+regressControl = trainControl(method="repeatedcv",number = 5, repeats = 5) 
+
+OriginalModel3 = train(full_rank ~ view_count + comment_count + time_since_pub + sub_count,
+                      newset, 
+                      method="lm", 
+                      trControl = regressControl)
+                      
+
+summary(OriginalModel3)
+
+OriginalModel3$results$RMSE
+```
+
+
+
+
+
+Knn gives the best predictions. Lm is just as accurate, but it allows for predictions outside of the observed range, leading to outlier predictions like a trending rank of -10, which is impossible.
+```{r}
+testPredictionsB = predict(regression_best_fit, trendTest2b) 
+#table(testPredictionsB)
+#table(trendTest2b$trending_status)
+#table(testPredictionsB, trendTest2b$full_rank)
+
+trendTest2b$pred = testPredictionsB
+
+debut_rank_knn_predictions <- ggplot(trendTest2b, aes(y=full_rank,x=pred))+geom_point()+ geom_smooth(method = 'lm')
+
+debut_rank_knn_predictions
+
+rmse(trendTest2b$full_rank, trendTest2b$pred)
+chisq.test(trendTest2b$full_rank, trendTest2b$pred)
+```
+
+
+This model gives the best predictions 
+```{r}
+testPredictions = predict(regression_best_fit2, trendTest2) 
+#table(testPredictionsB)
+#table(trendTest2b$trending_status)
+#table(testPredictionsB, trendTest2b$full_rank)
+
+trendTest2$pred = testPredictions
+
+rolling_rank_knn_predictions <- ggplot(trendTest2, aes(y=full_rank,x=pred))+geom_point()+ geom_smooth(method = 'lm')
+
+rolling_rank_knn_predictions
+
+rmse(trendTest2$full_rank, trendTest2$pred)
+chisq.test(trendTest2$full_rank, trendTest2$pred)
+#rmse(testPredictionsB)
+```
+
+
+```{r}
+
+
+
+set.seed(1)
+smote_train = SMOTE(trending_status ~ ., data  = trendTrain2)
+
+```
+
+
+
+```{r, include = FALSE}
+trctrl = trainControl(classProb=TRUE, 
+                     method = "repeatedcv", 
+                     number = 5, 
+                     repeats = 1)
+
+tunegrid=expand.grid(layer1=c(1,3,5),
+                     layer2=c(1,3,5),
+                     layer3 = c(1,3,5),
+                     hidden_dropout=0, 
+                     visible_dropout=0)
+
+
+
+
+SmoteModel = train(trending_status ~ view_count + comment_count + time_since_pub + sub_count,
+                     #.-full_rank - video_id - channelTitle - trending_date,
+                 smote_train,
+                 method = "dnn",
+                 tuneGrid = tunegrid,
+                 trControl= trctrl,
+                 preProcess=c("scale","center")
+)
+
+
+
+SmoteModel2 = train(trending_status ~ log(view_count) + time_since_pub + sub_count,
+                     #.-full_rank - video_id - channelTitle - trending_date,
+                 smote_train,
+                 method = "dnn",
+                 tuneGrid = tunegrid,
+                 trControl= trctrl,
+                 preProcess=c("scale","center")
+)
+
+```
+
+
+
+```{r}
+
+#testRosePredictions = predict(RoseModel,trendTest2mini) 
+#confusionMatrix(testRosePredictions, trendTest2mini$trending_status)
+
+#testSmotePredictions1 <- testSmotePredictions   << I stored this just in case I need it later
+
+
+testSmotePredictions = predict(SmoteModel,trendTest2) 
+confusionMatrix(testSmotePredictions, trendTest2$trending_status)
+
+
+testSmotePredictions2 = predict(SmoteModel2,trendTest2) 
+confusionMatrix(testSmotePredictions2, trendTest2$trending_status)
+```
+
+
+
+
+
+
+
+```{r}
+setwd("C:/Users/Louis Weisz/DA401 Trending Analysis")
+viewsComparison_with_pscore = read.csv('schlapp_median_with_pscore.csv')
+```
+
+
+Because I was collecting this data through october, it just so happens that the center of the dataset lines up with the release of the p-scores of a handful of these channels.
+```{r}
+vcwp <- na.omit(viewsComparison_with_pscore)
+
+ggplot(vcwp, aes(x=video_id,y=p_score))+geom_point()+stat_smooth(method="lm")
+
+summary(lm(formula = video_id ~ p_score, data = vcwp))
+
+```
+Despite much suspicion, p-score seems to have little to no direct correlation with a channel's likelihood to trend. In other words, any video (within reason) can trend, regardless of how "advertiser-friendly" it is.
+
+
+```{r}
+setwd("C:/Users/Louis Weisz/DA401 Trending Analysis")
+viewsComparison_modified = read.csv('MODIFIED_modern_median_vs_trending_views_comparison.csv')
+
+trad_media <- viewsComparison_modified %>% filter(Classification == 'Traditional Media') %>% filter(channel_title != 'Star Wars')
+
+#ggplot(trad_media, aes(y=median_views,x=mean_trending_views))+geom_point()
+
+traditional_media_views_comparison <- ggplot(trad_media, aes(fill=trndMean_vs_normMedian, y=views, x=channel_title)) + 
+    geom_bar(position="dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90)) +
+    scale_x_discrete(labels=c("The Tonight Show Starring Jimmy Fallon" = "Tonight Show", "The Late Show with Stephen Colbert" = "Late Show", "The Daily Show with Trevor Noah" = "Daily Show", "UFC - Ultimate Fighting Championship" = "UFC", "Skip and Shannon: UNDISPUTED" = "Skip & Shannon"))
+
+
+traditional_media_views_comparison
+
+
+
+
+youtubers <- viewsComparison_modified %>% filter(Classification == 'Youtuber')
+
+youtuber_views_comparison <- ggplot(youtubers, aes(fill=trndMean_vs_normMedian, y=views, x=channel_title)) + 
+    geom_bar(position="dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90)) +
+    scale_x_discrete(labels=c("The Tonight Show Starring Jimmy Fallon" = "Tonight Show", "The Late Show with Stephen Colbert" = "Late Show", "The Daily Show with Trevor Noah" = "Daily Show", "UFC - Ultimate Fighting Championship" = "UFC", "Skip and Shannon: UNDISPUTED" = "Skip & Shannon"))
+
+
+youtuber_views_comparison
+
+```
+
+
+The reality here is that we can't see all the back-end stats -- but from what we can see, a clear trend emerges. Looking at these graphs, comparing channels to each other.
+What we find is that traditional media tends to put out content at a very rapid pace, but it doesn't tend to *land* with a youtube audience. Not every piece of content is something that everybody cares about.
+
+Youtubers, on the other hand, *tend* to put out content at a slower pace -- generally once a day at most -- however this content is usually well-targeted to their audience, so in general it does better. It appears that very few youtubers seem to see a substantial viewership boost from trending -- and this suggestion is substantiated by a recent comment by Linus from Linus Media Group. Noting that in one case, one of his videos managed to "trend" even while it was underperforming in terms of overall viewership. 
+
+Looking at these graphs side by side, it seems to suggest that it isn't the magnitude of viewership for a video that matters, but rather it's the breadth of that viewership. Youtubers tend to post videos that are well-targeted for their usual audience, resulting in a relatively consistent median view count. They can usually rely on past fans returning to watch their new content. By contrast, traditional media companies tend to post videos targeted at the general public rather than a specific niche, and as a result the only videos that trend for them are the videos that are widely popular. 
+
+
+```{r}
+
+stuff_1 <- viewsComparison_modified %>% filter(Classification == 'Youtuber') %>% filter(trndMean_vs_normMedian == "trndMean")
+print('Youtuber Trending Mean Views:')
+mean(stuff_1$views)
+stuff_2 <- viewsComparison_modified %>% filter(Classification == 'Youtuber') %>% filter(trndMean_vs_normMedian == "normMedian")
+print('Youtuber Usual Mean Views:')
+mean(stuff_2$views)
+stuff_3 <- viewsComparison_modified %>% filter(Classification == 'Traditional Media') %>% filter(trndMean_vs_normMedian == "trndMean")
+print('Traditional Media Trending Mean Views:')
+mean(stuff_3$views)
+stuff_4 <- viewsComparison_modified %>% filter(Classification == 'Traditional Media') %>% filter(trndMean_vs_normMedian == "normMedian")
+print('Traditional Media Usual Mean Views:')
+mean(stuff_4$views)
+
+
+
+
+
+stuff_1 <- viewsComparison_modified %>% filter(Classification == 'Youtuber') %>% filter(trndMean_vs_normMedian == "trndMean")
+print('Youtuber Trending Median Views:')
+median(stuff_1$views)
+stuff_2 <- viewsComparison_modified %>% filter(Classification == 'Youtuber') %>% filter(trndMean_vs_normMedian == "normMedian")
+print('Youtuber Usual Median Views:')
+median(stuff_2$views)
+stuff_3 <- viewsComparison_modified %>% filter(Classification == 'Traditional Media') %>% filter(trndMean_vs_normMedian == "trndMean")
+print('Traditional Media Trending Median Views:')
+median(stuff_3$views)
+stuff_4 <- viewsComparison_modified %>% filter(Classification == 'Traditional Media') %>% filter(trndMean_vs_normMedian == "normMedian")
+print('Traditional Media Usual Median Views:')
+median(stuff_4$views)
+```
+
+To really hammer this point home, I took the the median and mean of each of these sets. Looking at this we see that while videos by Youtubers that land on Trending tend to perform similarly to their typical content, videos by Traditional Media companies that land on Trending tend to perform 4-5x better than usual. 
+
+Of course, even knowing all this, there's still one big question -- Do videos trend because they're widely popular, or do videos become widely popular *because* they hit Trending? In other words, is it rigged?
+
+While it's difficult to be certain, I think that in general videos tend to hit trending because of widespread popularity -- and not the other way around.
+
+
+
+
+
+
+
+
+WHAT'S THE UPSHOT? 
+Assuming that a video is sufficiently topical, we can use these methods to predict whether that video will trend. We also know what kinds of videos trend.
+For example, if you were to feed the algorithm a video about airpods on the same day the airpods video was released, and look at the initial performance metrics, I feel confident that this model could give a reasonable prediction about whether it will trend, and how highly it will rank.
+
+WHAT CAN'T WE DO?
+This model likely cannot take a truly random video, and accurately predict whether it will trend. A recently published, top performing video may be able to "fool" the algorithm because it does not account for topicality or relevance. A popular video on a popular channel may surpass the initial performance of many of these videos and despite this, still not trend, likely due to a lack of broad relevance.
+
+I think the best example of this is probably David Dobrik. One video from him hit trending, specifically one called "COCA COLA VS MENTOS INSIDE CAR". Currently, it has 11m views. A video posted two weeks ago by him, called "THIS WAS MY FIRST TIME MEETING HER!!" also has 11m views -- but did not trend, despite having the same amount of views (not to mention, in a shorter time as well). Why is this the case? I think the titles say it all. Coke and Mentos is something everybody understands -- and the car variation is unique enough to pique most people's interest. It suggests a "disaster waiting to happen", something almost everybody finds funny and interesting. By contrast, the other video is specifically about david -- HIS first time meeting someone. If you don't care about david, you might not click on this video, however if you DO care about david, you might be MORE likely to click this video -- which is likely why it still performed well overall.
+
+This dataset is based on videos that did trend, or that came close -- not a mix of similarily performing videos where some trended and others didn't. As a result, a video exhibiting similar performance may not trend if the algorithm deems it to be insufficiently topical or not interesting to a wide variety of users. 
+
+WHAT SHOULD BE NEXT?
+I think the next step here is to dive into textual analysis of titles, tags, and possibly video descriptions or caption transcripts. These will give a bigger picture of what a given video is actually about, and combined with ongoing analysis of youtube trends and internet trends, may grant the ability to predict whether ANY video will trend (rather than just one that is predetermined to be topical).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
