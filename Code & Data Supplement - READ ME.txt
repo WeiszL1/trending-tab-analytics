@@ -1,0 +1,10 @@
+Github has a limit on large files, and these data sets are massive. However,
+they are also required if you want to do your own exploration or run my code
+yourself. Thus, I have a google drive folder that is filled with the data and
+other documents, which you are welcome to download and access. You may use it
+however you need to, as long as you credit me.
+
+Enjoy! And please feel free to email me at weisz_l1@denison.edu if you have
+questions about it.
+
+https://drive.google.com/drive/folders/17XTNXVeYqlIocqrJnHrdb7OCz-oacwaV?usp=sharing 

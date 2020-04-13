@@ -1,0 +1,36 @@
+Hello! Here is a brief overview of the contents of this repository.
+(most of this is found via the google drive folder that
+I have linked in the Code & Data Supplement README file)
+
+Early results of my research can be found in the 
+'Trending_Early_results' folder, though these are
+rather incomplete.
+
+The end results of my research are in the
+'DA401 Trending Analysis' folder, which has it's 
+own readme for explanation.
+
+'All Trending Data Ever Pulled' contains exactly
+what it says. It's a repositiory of all of the 
+data I pulled from the trending tab, ever. Some even
+after I finished my analysis. The data provided elsewhere
+is sufficient for analysis, but this was included for 
+completeness.
+
+'Research_Presentation_12-11-19.mp4' is a recording 
+from my presentation on this work, which I included
+to shed light on some of the bigger insights. The 
+video quality unfortunately isn't great, so I've 
+also included a copy of the powerpoint I used to
+present.
+
+'YoutubeTrendingStatAnalysis' is a statistical analysis
+of the trending tab data. While most of the wrangling
+was done in python, this file contains the statistical 
+tests I reference in my paper. 
+
+'Youtube Trending Analysis' is my research paper giving
+an overview of my findings.
+
+If you have further question, please feel free to reach
+out to me at weisz_l1@denison.edu. 
