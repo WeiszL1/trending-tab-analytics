@@ -6,7 +6,7 @@ Created on Mon Nov 18 17:40:39 2019
 """
 
 #!/usr/bin/env python3
-YT_API_KEY = "AIzaSyDAqdcuoBaCCLAl9ORb_ko54DTWG-635Ao"
+YT_API_KEY = "INSERT YOUR KEY HERE"
 
 
 import os, math, statistics
