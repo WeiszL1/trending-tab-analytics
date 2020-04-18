@@ -17,12 +17,12 @@ after I finished my analysis. The data provided elsewhere
 is sufficient for analysis, but this was included for 
 completeness.
 
-'Research_Presentation_12-11-19.mp4' is a recording 
-from my presentation on this work, which I included
-to shed light on some of the bigger insights. The 
-video quality unfortunately isn't great, so I've 
-also included a copy of the powerpoint I used to
-present.
+At this link (https://youtu.be/kTHNqU00ImQ) you can watch 
+a recording of my presentation on this work, which I 
+included to shed light on some of the bigger insights. 
+The video quality unfortunately isn't great, but I've
+enhanced it to the best of my ability by overlaying
+the powerpoint slides.
 
 'YoutubeTrendingStatAnalysis' is a statistical analysis
 of the trending tab data. While most of the wrangling
